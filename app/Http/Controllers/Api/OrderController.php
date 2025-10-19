@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Cart;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -129,6 +131,56 @@ class OrderController extends Controller
         }
 
         return response()->json($orders);
+    }
+
+    public function checkout(Request $request)
+    {
+        $user = Auth::user();
+
+        // 1. Ambil semua item keranjang milik user
+        $cartItems = Cart::where('user_id', $user->id)->with('product')->get();
+
+        // 2. Cek jika keranjang kosong
+        if ($cartItems->isEmpty()) {
+            return response()->json(['message' => 'Keranjang Anda kosong.'], 400);
+        }
+
+        // 3. Gunakan Database Transaction
+        // Ini memastikan jika ada satu order gagal, semua order akan dibatalkan
+        DB::beginTransaction();
+        try {
+            $createdOrders = [];
+            foreach ($cartItems as $item) {
+                // 4. Hitung total harga per item
+                $totalPrice = $item->product->price * $item->quantity;
+
+                // 5. Buat entri pesanan baru untuk setiap item
+                $order = Order::create([
+                    'user_id' => $user->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'total_price' => $totalPrice,
+                    'status' => 'pending', // Status default saat checkout
+                ]);
+                $createdOrders[] = $order;
+            }
+
+            // 6. Jika berhasil, hapus semua item dari keranjang
+            Cart::where('user_id', $user->id)->delete();
+
+            // 7. Konfirmasi transaksi
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Checkout berhasil!',
+                'orders' => $createdOrders
+            ], 201);
+
+        } catch (\Exception $e) {
+            // 8. Jika ada error, batalkan semua
+            DB::rollBack();
+            return response()->json(['message' => 'Terjadi kesalahan saat checkout.', 'error' => $e->getMessage()], 500);
+        }
     }
 
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\CartController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -28,4 +29,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('orders', OrderController::class);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
+
+    Route::get('/cart', [CartController::class, 'index']);      // Melihat isi keranjang
+    Route::post('/cart', [CartController::class, 'store']);     // Menambah item ke keranjang
+    Route::put('/cart/{cart}', [CartController::class, 'update']);  // Mengubah jumlah item
+    Route::delete('/cart/{cart}', [CartController::class, 'destroy']); // Menghapus item dari keranjang
+    Route::post('/checkout', [OrderController::class, 'checkout']);
 });
