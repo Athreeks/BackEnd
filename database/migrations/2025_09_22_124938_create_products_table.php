@@ -14,6 +14,7 @@ return new class extends Migration
             $table->text('description');
             $table->integer('price');
             $table->enum('category', ['salad', 'aksesoris']);
+            $table->string('image_path')->nullable();
             $table->timestamps();
         });
     }
