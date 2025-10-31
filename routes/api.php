@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\WebhookController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/payment-webhook', [WebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -35,4 +37,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/cart/{cart}', [CartController::class, 'update']);  // Mengubah jumlah item
     Route::delete('/cart/{cart}', [CartController::class, 'destroy']); // Menghapus item dari keranjang
     Route::post('/checkout', [OrderController::class, 'checkout']);
+    Route::post('/checkout/{checkout}', [OrderController::class, 'checkout']);
+    Route::post('/orders/{order}/pay', [OrderController::class, 'createPayment']);
 });
