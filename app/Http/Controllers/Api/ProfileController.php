@@ -5,45 +5,53 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
+    /**
+     * Menampilkan data user yang sedang login.
+     */
     public function show(Request $request)
     {
         return response()->json($request->user());
     }
 
+    /**
+     * Memperbarui data user (nama, email, telepon, dan foto).
+     */
     public function update(Request $request)
     {
-        // Ambil user yang sedang login
         $user = $request->user();
 
-        // Validasi input
+        // 2. Validasi (hapus 'alamat')
         $validatedData = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            // 1. Tambahkan validasi untuk password lama
-            'old_password' => 'required_with:password|string',
-            'password' => 'sometimes|string|min:8|confirmed',
+            'name' => 'required|string|max:255',
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                Rule::unique('users')->ignore($user->id),
+            ],
+            'telepon' => 'nullable|string|max:20',
+            // 'alamat' => 'nullable|string', 👈 DIHAPUS DARI SINI
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Perbarui nama jika ada di request
-        if ($request->has('name')) {
-            $user->name = $validatedData['name'];
-        }
-
-        // Perbarui password jika ada di request
-        if ($request->has('password')) {
-            // 2. Verifikasi password lama sebelum mengubahnya
-            if (!Hash::check($request->old_password, $user->password)) {
-                return response()->json(['message' => 'Password lama tidak sesuai.'], 422);
+        // 3. Handle file upload (tetap sama)
+        if ($request->hasFile('image')) {
+            if ($user->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
             }
-
-            $user->password = Hash::make($validatedData['password']);
+            $path = $request->file('image')->store('profile_photos', 'public');
+            $user->profile_photo_path = $path;
         }
 
-        // Simpan perubahan
+        // 4. Update data user (hapus 'alamat')
+        $user->name = $validatedData['name'];
+        $user->email = $validatedData['email'];
+        $user->telepon = $validatedData['telepon'];
+        // $user->alamat = $validatedData['alamat']; 👈 DIHAPUS DARI SINI
+
         $user->save();
 
         return response()->json([
